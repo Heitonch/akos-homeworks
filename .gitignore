@@ -1,0 +1,6 @@
+.idea/
+cmake-build-*/
+.DS_Store
+idz1/.idea/
+idz1/cmake-build-*/
+idz1/idz1
