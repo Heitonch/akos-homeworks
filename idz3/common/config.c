@@ -37,6 +37,13 @@ static int parse_long(const char *s, long min, long max, long *out) {
     return 1;
 }
 
+int config_parse_int(const char *text, int min, int max, int *out) {
+    long value;
+    if (!text || !out || !parse_long(text, min, max, &value)) return 0;
+    *out = (int)value;
+    return 1;
+}
+
 void config_defaults(Config *c) {
     memset(c, 0, sizeof(*c));
     c->n = 5;
@@ -196,7 +203,10 @@ int config_apply_args(int argc, char **argv, Config *cfg, int **initial, const c
     int loaded = 0;
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--help")) { config_usage(argv[0]); return -1; }
-        if (!strcmp(argv[i], "--config") && i + 1 < argc) { *config_path = argv[++i]; }
+        if (!strcmp(argv[i], "--config")) {
+            if (i + 1 >= argc || !argv[i + 1][0]) return 0;
+            *config_path = argv[++i];
+        }
     }
     if (*config_path) {
         if (!config_load(*config_path, cfg, initial)) return 0;
@@ -206,7 +216,11 @@ int config_apply_args(int argc, char **argv, Config *cfg, int **initial, const c
         *initial = NULL;
     }
     for (int i = 1; i < argc; i++) {
-        if (!strcmp(argv[i], "--config")) { i++; continue; }
+        if (!strcmp(argv[i], "--config")) {
+            if (i + 1 >= argc) return 0;
+            i++;
+            continue;
+        }
         if (i + 1 >= argc) return 0;
         const char *key = argv[i++], *val = argv[i];
         long v;
@@ -226,7 +240,6 @@ int config_apply_args(int argc, char **argv, Config *cfg, int **initial, const c
             else if (!strcmp(key, "--confirm-ms")) cfg->confirm_ms = (int)v;
             else return 0;
         }
-        i++;
     }
     if (cfg->n < 1 || cfg->n > IDZ3_MAX_DB || cfg->readers < 1 || cfg->readers > IDZ3_MAX_PARTICIPANTS ||
         cfg->writers < 1 || cfg->writers > IDZ3_MAX_PARTICIPANTS || cfg->ops < 0 || cfg->ops > 1000000 ||
