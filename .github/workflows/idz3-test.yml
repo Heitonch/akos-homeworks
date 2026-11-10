@@ -1,0 +1,31 @@
+name: IDZ3 Linux Tests
+
+on:
+  push:
+    branches:
+      - idz3-test
+    paths:
+      - "AKOS_IDZ3_FINAL_UPLOAD.zip"
+      - ".github/workflows/idz3-test.yml"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential python3 unzip
+
+      - name: Extract project
+        run: unzip -q AKOS_IDZ3_FINAL_UPLOAD.zip -d .
+
+      - name: Build
+        run: make -C idz3 -j2
+
+      - name: Run tests
+        run: make -C idz3 test
