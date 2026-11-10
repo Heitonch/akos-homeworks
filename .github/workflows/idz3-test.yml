@@ -1,9 +1,17 @@
+
 name: IDZ3 Linux Tests
 
 on:
   push:
     branches:
-      - idz3-test
+      - master
+    paths:
+      - "idz3/**"
+      - ".github/workflows/idz3-test.yml"
+
+  pull_request:
+    branches:
+      - master
     paths:
       - "idz3/**"
       - ".github/workflows/idz3-test.yml"
