@@ -17,11 +17,21 @@ static int send_abort(mqd_t server, int id) {
 int main(int argc, char **argv) {
     int id = 1, ops = -1;
     for (int i = 1; i < argc; i++) {
-        if (!strcmp(argv[i], "--id") && i + 1 < argc) id = atoi(argv[++i]);
-        else if (!strcmp(argv[i], "--ops") && i + 1 < argc) ops = atoi(argv[++i]);
-        else { fprintf(stderr, "Использование: mq_writer [--id N] [--ops N]\n"); return 1; }
+        if (!strcmp(argv[i], "--id") && i + 1 < argc) {
+            if (!config_parse_int(argv[++i], 1, IDZ3_MAX_PARTICIPANTS, &id)) {
+                fprintf(stderr, "Некорректный идентификатор участника.\n");
+                return 1;
+            }
+        } else if (!strcmp(argv[i], "--ops") && i + 1 < argc) {
+            if (!config_parse_int(argv[++i], -1, 1000000, &ops)) {
+                fprintf(stderr, "Некорректное число операций.\n");
+                return 1;
+            }
+        } else {
+            fprintf(stderr, "Использование: mq_writer [--id N] [--ops N]\n");
+            return 1;
+        }
     }
-    if (id < 1 || id > 256 || ops < -1 || ops > 1000000) return 1;
     mq_install_signals();
     mqd_t server, reply;
     char reply_name[MQ_REPLY_LEN];

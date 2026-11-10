@@ -25,11 +25,11 @@ $(addprefix bin/,shm_init shm_reader shm_writer shm_stop shm_status shm_cleanup)
 bin/mq_server: independent_mq/server.c $(MQ_COMMON) $(COMMON) | bin
 	$(CC) $(CFLAGS) -o $@ independent_mq/server.c $(MQ_COMMON) $(COMMON) $(LDLIBS)
 
-bin/mq_reader: independent_mq/reader.c $(MQ_COMMON) | bin
-	$(CC) $(CFLAGS) -o $@ independent_mq/reader.c $(MQ_COMMON) $(LDLIBS)
+bin/mq_reader: independent_mq/reader.c $(MQ_COMMON) common/config.c common/config.h common/model.h | bin
+	$(CC) $(CFLAGS) -o $@ independent_mq/reader.c $(MQ_COMMON) common/config.c $(LDLIBS)
 
-bin/mq_writer: independent_mq/writer.c $(MQ_COMMON) | bin
-	$(CC) $(CFLAGS) -o $@ independent_mq/writer.c $(MQ_COMMON) $(LDLIBS)
+bin/mq_writer: independent_mq/writer.c $(MQ_COMMON) common/config.c common/config.h common/model.h | bin
+	$(CC) $(CFLAGS) -o $@ independent_mq/writer.c $(MQ_COMMON) common/config.c $(LDLIBS)
 
 $(addprefix bin/,mq_stop mq_cleanup): bin/%: independent_mq/control.c independent_mq/protocol.h | bin
 	$(CC) $(CFLAGS) -o $@ independent_mq/control.c $(LDLIBS)
