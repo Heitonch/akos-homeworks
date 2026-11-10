@@ -119,14 +119,15 @@ def test_cli_arguments() -> None:
     assert missing_config.returncode != 0
 
     invalid_arguments = (
-        [str(BIN / "shm_reader"), "--id", "abc"],
-        [str(BIN / "mq_reader"), "--ops", "1abc"],
-        [str(BIN / "mq_writer"), "--id", "1x"],
+        ([str(BIN / "shm_reader"), "--ops", "1abc"], "Некорректное число операций."),
+        ([str(BIN / "mq_reader"), "--ops", "1abc"], "Некорректное число операций."),
+        ([str(BIN / "mq_writer"), "--id", "1x"], "Некорректный идентификатор участника."),
     )
-    for args in invalid_arguments:
+    for args, expected_error in invalid_arguments:
         result = subprocess.run(args, cwd=ROOT, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, text=True)
         assert result.returncode != 0, (args, result.stdout)
+        assert expected_error in result.stdout, (args, result.stdout)
 
 
 def test_parent_interrupt() -> None:
