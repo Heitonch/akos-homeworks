@@ -434,6 +434,8 @@ static void process_command(Database *database, const ServerOptions *options,
             return;
         }
 
+        log_event("[Writer %d] подтверждает версию %d; начинается проверка",
+                  database->writer_id, database->pending_version);
         qsort(working, (size_t)options->size, sizeof(int), compare_integers);
         for (position = 0; position < options->size; ++position) {
             if (working[position] < options->min_value ||
@@ -445,12 +447,14 @@ static void process_command(Database *database, const ServerOptions *options,
             }
         }
 
+        log_event("[Writer %d] проверка версии %d завершена успешно",
+                  database->writer_id, database->pending_version);
         database->active_buffer = 1 - database->active_buffer;
         database->version = database->pending_version;
         ++database->publications;
         database->writing = 0;
         database->writer_slot = -1;
-        log_event("[Writer %d] версия %d проверена и опубликована",
+        log_event("[Writer %d] версия %d атомарно опубликована",
                   database->writer_id, database->version);
         (void)send_response(client->fd, "OK PUBLISHED %d", database->version);
         flush_waiting_reads(database, options, clients);
