@@ -43,7 +43,7 @@ grep -q 'STATUS version=2' "$tmp/observer"
 # WAIT_NEW: a reader must receive the newly published version.
 port=$((port+1))
 ./bin/idz4 server --bind 127.0.0.1 --port "$port" --strategy WAIT_NEW --prep-ms 300 --read-ms 0 --confirm-ms 0 >"$tmp/server2" 2>&1 & pid=$!
-sleep .2
+wait_for_server "$port"
 ./bin/idz4 writer --host 127.0.0.1 --port "$port" --id 3 --ops 1 >"$tmp/writer2" & wp=$!
 sleep .1
 ./bin/idz4 reader --host 127.0.0.1 --port "$port" --id 4 --ops 1 >"$tmp/reader2" & rp=$!
@@ -55,7 +55,7 @@ grep -q 'DATA 2 ' "$tmp/reader2"
 # One-element database and one-stage publication.
 port=$((port+1))
 ./bin/idz4 server --bind 127.0.0.1 --port "$port" --strategy READ_OLD --size 1 --stages 1 --min 1 --max 9 --read-ms 0 --prep-ms 0 --confirm-ms 0 >"$tmp/server3" 2>&1 & pid=$!
-sleep .2
+wait_for_server "$port"
 ./bin/idz4 writer --host 127.0.0.1 --port "$port" --id 5 --ops 1 >"$tmp/writer3"
 ./bin/idz4 reader --host 127.0.0.1 --port "$port" --id 6 --ops 1 >"$tmp/reader3"
 kill -INT "$pid"; wait "$pid"; pid=
