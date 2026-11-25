@@ -13,7 +13,7 @@ sleep .2
 ./bin/idz4 writer --host 127.0.0.1 --port "$port" --id 2 --ops 1 >"$tmp/writer"
 ./bin/idz4 observer --host 127.0.0.1 --port "$port" --id 9 --ops 1 >"$tmp/observer"
 kill -INT "$pid"; wait "$pid"; pid=
-grep -q 'DATA 1 ' "$tmp/reader"
+grep -q 'DATA 1 ' "$tmp/reader"\ngrep -q 'начал подготовку версии 2' "$tmp/server1"\ngrep -q 'версия=1' "$tmp/server1"
 grep -q 'OK PUBLISHED 2' "$tmp/writer"
 grep -q 'STATUS version=2' "$tmp/observer"
 port=$((port+1))
