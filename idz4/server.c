@@ -232,6 +232,7 @@ static void initialize_database(Database *database, const ServerOptions *options
 static void respond_to_read(Database *database, const ServerOptions *options,
                             Client *client, int record_index)
 {
+    (void)options;
     int value;
     int version;
     long long product;
