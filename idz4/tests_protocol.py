@@ -86,7 +86,7 @@ def main():
 
             # The server rejects trailing handshake data.
             malformed = socket.create_connection(("127.0.0.1", port), timeout=3)
-            malformed.sendall(b"HELLO reader 99 extra\\n")
+            malformed.sendall(b"HELLO reader 99 extra\n")
             assert receive_line(malformed) == "ERR handshake"
             assert malformed.recv(1) == b""
             malformed.close()
