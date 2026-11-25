@@ -8,6 +8,18 @@ pid=
 cleanup(){ [[ -z "$pid" ]] || { kill -INT "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true; }; rm -rf "$tmp"; }
 trap cleanup EXIT
 
+wait_for_log() {
+    local pattern=$1
+    for _ in {1..100}; do
+        if grep -q "$pattern" logs/idz4_server.log 2>/dev/null; then
+            return 0
+        fi
+        sleep 0.05
+    done
+    echo "Timed out waiting for server event: $pattern" >&2
+    return 1
+}
+
 wait_for_server() {
     python3 - "$1" <<'PY'
 import socket
@@ -26,10 +38,10 @@ PY
 }
 
 # READ_OLD: reads during preparation must use the previous confirmed version.
-./bin/idz4 server --bind 127.0.0.1 --port "$port" --strategy READ_OLD --prep-ms 300 --read-ms 0 --confirm-ms 0 >"$tmp/server1" 2>&1 & pid=$!
+./bin/idz4 server --bind 127.0.0.1 --port "$port" --strategy READ_OLD --prep-ms 1000 --read-ms 0 --confirm-ms 0 >"$tmp/server1" 2>&1 & pid=$!
 wait_for_server "$port"
 ./bin/idz4 writer --host 127.0.0.1 --port "$port" --id 2 --ops 1 --seed 42 >"$tmp/writer" & wp=$!
-sleep .1
+wait_for_log '\[Writer 2\] начал подготовку версии 2'
 ./bin/idz4 reader --host 127.0.0.1 --port "$port" --id 1 --ops 2 >"$tmp/reader"
 wait "$wp"
 ./bin/idz4 observer --host 127.0.0.1 --port "$port" --id 9 --ops 1 >"$tmp/observer"
@@ -42,10 +54,10 @@ grep -q 'STATUS version=2' "$tmp/observer"
 
 # WAIT_NEW: a reader must receive the newly published version.
 port=$((port+1))
-./bin/idz4 server --bind 127.0.0.1 --port "$port" --strategy WAIT_NEW --prep-ms 300 --read-ms 0 --confirm-ms 0 >"$tmp/server2" 2>&1 & pid=$!
+./bin/idz4 server --bind 127.0.0.1 --port "$port" --strategy WAIT_NEW --prep-ms 1000 --read-ms 0 --confirm-ms 0 >"$tmp/server2" 2>&1 & pid=$!
 wait_for_server "$port"
 ./bin/idz4 writer --host 127.0.0.1 --port "$port" --id 3 --ops 1 >"$tmp/writer2" & wp=$!
-sleep .1
+wait_for_log '\[Writer 3\] начал подготовку версии 2'
 ./bin/idz4 reader --host 127.0.0.1 --port "$port" --id 4 --ops 1 >"$tmp/reader2" & rp=$!
 wait "$wp"; wait "$rp"
 kill -INT "$pid"; wait "$pid"; pid=
