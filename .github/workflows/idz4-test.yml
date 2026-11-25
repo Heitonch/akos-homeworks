@@ -1,0 +1,19 @@
+name: IDZ4 TCP tests
+on:
+  push:
+    paths:
+      - 'idz4/**'
+      - '.github/workflows/idz4-test.yml'
+  pull_request:
+    paths:
+      - 'idz4/**'
+      - '.github/workflows/idz4-test.yml'
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: make -C idz4
+      - name: Integration tests
+        run: make -C idz4 test
