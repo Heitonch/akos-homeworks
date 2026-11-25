@@ -7,7 +7,7 @@ $(BIN):
 $(BIN)/idz4: main.c | $(BIN)
 	$(CC) $(CFLAGS) -o $@ main.c
 test: all
-	./tests.sh
+	bash ./tests.sh
 clean:
 	rm -rf $(BIN) logs
 .PHONY: all test clean
