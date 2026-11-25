@@ -1,6 +1,7 @@
 #include "client_internal.h"
 
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 int run_observer(const ClientOptions *options)
@@ -15,6 +16,7 @@ int run_observer(const ClientOptions *options)
     int confirmation_delay_ms;
     int operation;
     int operation_limit;
+    int exit_status = 0;
 
     client_install_signal_handlers();
     if (!client_start("observer", options, &socket_fd, &database_size,
@@ -24,7 +26,6 @@ int run_observer(const ClientOptions *options)
     }
 
     operation_limit = options->operations < 0 ? default_operations : options->operations;
-
     (void)database_size;
     (void)stages;
     (void)read_delay_ms;
@@ -36,17 +37,33 @@ int run_observer(const ClientOptions *options)
          (operation_limit == 0 || operation < operation_limit);
          ++operation) {
         if (!client_request(socket_fd, "STATUS", response, sizeof(response))) {
+            if (!client_should_stop()) {
+                fprintf(stderr, "[Observer %d] ошибка получения состояния сервера\n",
+                        options->id);
+                exit_status = 1;
+            }
             break;
         }
-        puts(response);
+        if (strncmp(response, "STATUS ", 7) != 0) {
+            fprintf(stderr, "[Observer %d] неожиданный ответ: %s\n",
+                    options->id, response);
+            exit_status = 1;
+            break;
+        }
+        printf("[Observer %d] %s\n", options->id, response);
         if (operation_limit == 0 || operation + 1 < operation_limit) {
             client_sleep_ms(1000);
         }
     }
 
-    if (!client_should_stop()) {
-        (void)client_request(socket_fd, "QUIT", response, sizeof(response));
+    if (!client_should_stop() && exit_status == 0) {
+        if (!client_request(socket_fd, "QUIT", response, sizeof(response)) ||
+            strcmp(response, "BYE") != 0) {
+            exit_status = 1;
+        }
     }
+    printf("[Observer %d] завершил работу (%s)\n", options->id,
+           exit_status == 0 ? "успешно" : "с ошибкой");
     close(socket_fd);
-    return 0;
+    return exit_status;
 }
