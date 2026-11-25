@@ -62,6 +62,27 @@ kill -INT "$pid"; wait "$pid"; pid=
 grep -q 'OK PUBLISHED 2' "$tmp/writer3"
 grep -q 'DATA 2 0 ' "$tmp/reader3"
 
+# Reader selection is pseudo-random, reproducible and not a fixed cycle.
+port=$((port+1))
+./bin/idz4 server --bind 127.0.0.1 --port "$port" --strategy READ_OLD --size 7 --stages 2 --read-ms 0 --prep-ms 0 --confirm-ms 0 >"$tmp/server4" 2>&1 & pid=$!
+wait_for_server "$port"
+./bin/idz4 reader --host 127.0.0.1 --port "$port" --id 77 --ops 12 --seed 1234 >"$tmp/random1"
+./bin/idz4 reader --host 127.0.0.1 --port "$port" --id 77 --ops 12 --seed 1234 >"$tmp/random2"
+python3 - "$tmp/random1" "$tmp/random2" <<'PY'
+import sys
+
+def indices(path):
+    with open(path, encoding="utf-8") as source:
+        return [line.split()[4] for line in source if " DATA " in line]
+
+first = indices(sys.argv[1])
+second = indices(sys.argv[2])
+assert len(first) == 12, first
+assert first == second, (first, second)
+assert len(set(first)) > 1, first
+PY
+kill -INT "$pid"; wait "$pid"; pid=
+
 # Reject malformed parameters before opening a listening socket.
 if ./bin/idz4 server --port 70000 >"$tmp/invalid-port" 2>&1; then
     echo "Invalid port was accepted" >&2; exit 1
