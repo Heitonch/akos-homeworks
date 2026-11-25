@@ -1,4 +1,3 @@
-#define _DEFAULT_SOURCE
 #define _POSIX_C_SOURCE 200809L
 #include <arpa/inet.h>
 #include <errno.h>
@@ -50,7 +49,7 @@ static int server_main(int argc,char **argv){
  if(n<1||n>MAXN||stages<1||stages>n||ops<0||read_ms<0||prep_ms<0||confirm_ms<0){fprintf(stderr,"Invalid server parameters\n");return 2;}int initial[]={2,5,8,12,19};for(int i=0;i<n;i++)db[0][i]=db[1][i]=i<5?initial[i]:20+i;int fd=socket(AF_INET,SOCK_STREAM,0);if(fd<0){perror("socket");return 1;}int yes=1;setsockopt(fd,SOL_SOCKET,SO_REUSEADDR,&yes,sizeof(yes));struct sockaddr_in a={0};a.sin_family=AF_INET;a.sin_port=htons((unsigned short)atoi(port));if(inet_pton(AF_INET,ip,&a.sin_addr)!=1||bind(fd,(struct sockaddr*)&a,sizeof(a))<0||listen(fd,32)<0){perror("bind/listen");close(fd);return 1;}signal(SIGINT,on_signal);signal(SIGTERM,on_signal);signal(SIGPIPE,SIG_IGN);mkdir("logs",0755);log_file=fopen("logs/idz4_server.log","a");log_event("[SERVER] TCP %s:%s; size=%d strategy=%s",ip,port,n,strategy?"WAIT_NEW":"READ_OLD");
  Client c[MAXC];for(int i=0;i<MAXC;i++)c[i].fd=-1;
  while(!stopping){struct pollfd p[MAXC+1];int map[MAXC+1],cnt=1;p[0]=(struct pollfd){fd,POLLIN,0};for(int i=0;i<MAXC;i++)if(c[i].fd>=0){p[cnt]=(struct pollfd){c[i].fd,POLLIN,0};map[cnt++]=i;}int z=poll(p,cnt,500);if(z<0){if(errno==EINTR)continue;break;}if(p[0].revents&POLLIN){int q=accept(fd,NULL,NULL),k=-1;if(q>=0){for(int i=0;i<MAXC;i++)if(c[i].fd<0){k=i;break;}if(k<0)close(q);else{c[k].fd=q;c[k].used=0;c[k].id=0;}}}
- for(int j=1;j<cnt;j++)if(p[j].revents&(POLLIN|POLLHUP|POLLERR)){int k=map[j];char b[256];ssize_t r=recv(c[k].fd,b,sizeof(b),0);if(r<=0){if(writer==c[k].fd)abort_write("соединение писателя потеряно");for(int w=0;w<nwait;w++)if(waiters[w].fd==c[k].fd)waiters[w].fd=-1;close(c[k].fd);c[k].fd=-1;continue;}for(ssize_t t=0;t<r;t++){char ch=b[t];if(ch=='\n'){c[k].buf[c[k].used]=0;process(&c[k],c[k].buf);c[k].used=0;}else if(ch!='\r'&&c[k].used+1<LINE)c[k].buf[c[k].used++]=ch;else{close(c[k].fd);c[k].fd=-1;break;}}}}
+ for(int j=1;j<cnt;j++)if(p[j].revents&(POLLIN|POLLHUP|POLLERR)){int k=map[j];char b[256];ssize_t r=recv(c[k].fd,b,sizeof(b),0);if(r<=0){if(writer==c[k].fd)abort_write("соединение писателя потеряно");for(int w=0;w<nwait;w++)if(waiters[w].fd==c[k].fd)waiters[w].fd=-1;close(c[k].fd);c[k].fd=-1;continue;}for(ssize_t t=0;t<r;t++){char ch=b[t];if(ch=='\n'){c[k].buf[c[k].used]=0;process(&c[k],c[k].buf);c[k].used=0;}else if(ch!='\r'&&c[k].used+1<LINE)c[k].buf[c[k].used++]=ch;else{close(c[k].fd);c[k].fd=-1;break;}}}
  }
  abort_write("сервер завершает работу");log_event("[SERVER] stop version=%d reads=%lld publications=%lld stages=%lld aborted=%lld",version,reads,pubs,stages_done,aborted);for(int i=0;i<MAXC;i++)if(c[i].fd>=0)close(c[i].fd);close(fd);if(log_file)fclose(log_file);return 0;
 }
