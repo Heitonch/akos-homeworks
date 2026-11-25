@@ -28,6 +28,7 @@ typedef struct {
     char role[16];
     char input[IDZ4_LINE_SIZE];
     size_t input_length;
+    int closing;
 } Client;
 
 typedef struct {
@@ -247,7 +248,6 @@ static void respond_to_read(Database *database, const ServerOptions *options,
     int version;
     long long product;
 
-    sleep_ms(options->read_delay_ms);
     value = database->buffers[database->active_buffer][record_index];
     version = database->version;
     product = (long long)value * (record_index + 1);
@@ -327,8 +327,9 @@ static int register_client(Client *client, const char *line,
 {
     char role[16];
     int identifier;
+    char extra;
 
-    if (sscanf(line, "HELLO %15s %d", role, &identifier) != 2 || identifier < 0 ||
+    if (sscanf(line, "HELLO %15s %d %c", role, &identifier, &extra) != 2 || identifier < 0 ||
         (strcmp(role, "reader") != 0 && strcmp(role, "writer") != 0 &&
          strcmp(role, "observer") != 0)) {
         (void)send_response(client->fd, "ERR handshake");
@@ -481,7 +482,7 @@ static void process_command(Database *database, const ServerOptions *options,
         (void)send_response(client->fd,
             "STATUS version=%d size=%d writing=%d writer=%d reads=%llu publications=%llu stages=%llu aborted=%llu strategy=%s",
             database->version, options->size, database->writing,
-            database->writer_id, database->reads, database->publications,
+            database->writing ? database->writer_id : -1, database->reads, database->publications,
             database->completed_stages, database->aborted_writes,
             options->strategy == STRATEGY_WAIT_NEW ? "WAIT_NEW" : "READ_OLD");
         return;
@@ -489,6 +490,8 @@ static void process_command(Database *database, const ServerOptions *options,
 
     if (strcmp(line, "QUIT") == 0) {
         (void)send_response(client->fd, "BYE");
+        log_event("[%s %d] завершил работу", client->role, client->id);
+        client->closing = 1;
         return;
     }
 
@@ -649,6 +652,10 @@ int run_server(int argc, char **argv)
                     client->input[client->input_length] = '\0';
                     process_command(&database, &options, clients, slot, client->input);
                     client->input_length = 0;
+                    if (clients[slot].closing) {
+                        close_client(&database, &options, clients, slot);
+                        break;
+                    }
                 } else if (character != '\r' &&
                            client->input_length + 1 < sizeof(client->input)) {
                     client->input[client->input_length++] = character;
