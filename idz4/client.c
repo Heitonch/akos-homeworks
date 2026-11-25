@@ -1,6 +1,8 @@
 #define _POSIX_C_SOURCE 200809L
 #include "client_internal.h"
 
+#include <errno.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,10 +21,16 @@ static void handle_signal(int signal_number)
 
 void client_install_signal_handlers(void)
 {
+    struct sigaction action;
+
     stop_requested = 0;
-    signal(SIGINT, handle_signal);
-    signal(SIGTERM, handle_signal);
-    signal(SIGPIPE, SIG_IGN);
+    memset(&action, 0, sizeof(action));
+    action.sa_handler = handle_signal;
+    sigemptyset(&action.sa_mask);
+    (void)sigaction(SIGINT, &action, NULL);
+    (void)sigaction(SIGTERM, &action, NULL);
+    action.sa_handler = SIG_IGN;
+    (void)sigaction(SIGPIPE, &action, NULL);
 }
 
 int client_should_stop(void)
@@ -36,7 +44,7 @@ void client_sleep_ms(int milliseconds)
 
     delay.tv_sec = milliseconds / 1000;
     delay.tv_nsec = (long)(milliseconds % 1000) * 1000000L;
-    while (!client_should_stop() && nanosleep(&delay, &delay) < 0) {
+    while (!client_should_stop() && nanosleep(&delay, &delay) < 0 && errno == EINTR) {
         /* Resume the remaining delay after an unrelated signal. */
     }
 }
@@ -44,8 +52,35 @@ void client_sleep_ms(int milliseconds)
 int client_request(int socket_fd, const char *command, char *response,
                    size_t response_capacity)
 {
-    return send_line(socket_fd, command) &&
-           receive_line(socket_fd, response, response_capacity);
+    size_t used = 0;
+
+    if (response_capacity < 2 || !send_line(socket_fd, command)) {
+        return 0;
+    }
+
+    while (!client_should_stop() && used + 1 < response_capacity) {
+        struct pollfd descriptor = {.fd = socket_fd, .events = POLLIN};
+        int ready = poll(&descriptor, 1, 200);
+
+        if (ready < 0) {
+            if (errno == EINTR) continue;
+            return 0;
+        }
+        if (ready == 0) continue;
+        if (descriptor.revents & (POLLERR | POLLNVAL)) return 0;
+        if (descriptor.revents & (POLLIN | POLLHUP)) {
+            char character;
+            ssize_t received = recv(socket_fd, &character, 1, 0);
+            if (received <= 0) return 0;
+            if (character == '\n') {
+                response[used] = '\0';
+                return 1;
+            }
+            if (character != '\r') response[used++] = character;
+        }
+    }
+
+    return 0;
 }
 
 int client_start(const char *role, const ClientOptions *options,
