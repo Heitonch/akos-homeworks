@@ -78,6 +78,7 @@ int run_writer(const ClientOptions *options)
             if (strncmp(response, "OK STAGE ", 9) != 0) {
                 fprintf(stderr, "[Writer %d] стадия %d отклонена: %s\n",
                         options->id, stage + 1, response);
+                (void)client_request(socket_fd, "ABORT", response, sizeof(response));
                 exit_status = 1;
                 break;
             }
