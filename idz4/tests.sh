@@ -17,7 +17,7 @@ grep -q 'DATA 1 ' "$tmp/reader"
 grep -q 'OK PUBLISHED 2' "$tmp/writer"
 grep -q 'STATUS version=2' "$tmp/observer"
 port=$((port+1))
-./bin/idz4 server --bind 127.0.0.1 --port "$port" --strategy WAIT_NEW >"$tmp/server2" 2>&1 & pid=$!
+./bin/idz4 server --bind 127.0.0.1 --port "$port" --strategy WAIT_NEW --prep-ms 300 >"$tmp/server2" 2>&1 & pid=$!
 sleep .2
 ./bin/idz4 writer --host 127.0.0.1 --port "$port" --id 3 --ops 1 >"$tmp/writer2" & wp=$!
 sleep .1
