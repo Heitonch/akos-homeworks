@@ -1,5 +1,5 @@
 CC ?= gcc
-CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Wpedantic
+CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Wpedantic -D_DEFAULT_SOURCE
 BIN := bin
 all: $(BIN)/idz4
 $(BIN):
