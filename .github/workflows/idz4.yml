@@ -1,0 +1,22 @@
+name: IDZ4
+
+on:
+  push:
+    paths:
+      - "idz4/**"
+      - ".github/workflows/idz4.yml"
+  pull_request:
+    paths:
+      - "idz4/**"
+      - ".github/workflows/idz4.yml"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Build with strict warnings
+        run: make -C idz4 clean all
+      - name: Run integration and protocol tests
+        run: make -C idz4 test
