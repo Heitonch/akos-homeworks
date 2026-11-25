@@ -40,11 +40,16 @@ int run_reader(const ClientOptions *options)
          !client_should_stop() &&
          (operation_limit == 0 || operation < operation_limit);
          ++operation) {
+        uint32_t bound = (uint32_t)database_size;
+        uint32_t threshold = (uint32_t)(0U - bound) % bound;
         unsigned int index;
-        random_state ^= random_state << 13;
-        random_state ^= random_state >> 17;
-        random_state ^= random_state << 5;
-        index = random_state % (uint32_t)database_size;
+
+        do {
+            random_state ^= random_state << 13;
+            random_state ^= random_state >> 17;
+            random_state ^= random_state << 5;
+        } while (random_state < threshold);
+        index = random_state % bound;
         client_sleep_ms(read_delay_ms);
         if (client_should_stop()) break;
         (void)snprintf(command, sizeof(command), "READ %u", index);
