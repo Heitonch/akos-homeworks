@@ -11,7 +11,6 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
-#include <time.h>
 #include <unistd.h>
 
 #define DEFAULT_PORT "5050"
@@ -94,17 +93,6 @@ static void log_event(const char *format, ...)
     }
     va_end(copy);
     va_end(arguments);
-}
-
-static void sleep_ms(int milliseconds)
-{
-    struct timespec delay;
-
-    delay.tv_sec = milliseconds / 1000;
-    delay.tv_nsec = (long)(milliseconds % 1000) * 1000000L;
-    while (nanosleep(&delay, &delay) < 0 && errno == EINTR && !stop_requested) {
-        /* Continue waiting unless shutdown was requested. */
-    }
 }
 
 static int send_response(int fd, const char *format, ...)
