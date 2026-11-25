@@ -56,6 +56,7 @@ def main():
         observer_a = None
         observer_b = None
         observer_c = None
+        reader_after = None
         try:
             for _ in range(50):
                 if server.poll() is not None:
@@ -120,6 +121,17 @@ def main():
             assert send_command(writer_b, "STAGE 0") == "OK STAGE 0"
             assert send_command(writer_b, "PUBLISH") == "OK PUBLISHED 2"
             assert "version=2" in send_command(observer_a, "STATUS")
+            reader_after = connect_client(port, "reader", 23)
+            published_read = send_command(reader_after, "READ 0")
+            fields = published_read.split()
+            assert len(fields) == 6 and fields[0] == "DATA", published_read
+            assert int(fields[1]) == 2, published_read
+            assert int(fields[2]) == 0 and int(fields[4]) == 1, published_read
+            assert int(fields[3]) > 0 and int(fields[5]) == int(fields[3]), published_read
+            assert send_command(reader_after, "QUIT") == "BYE"
+            assert reader_after.recv(1) == b""
+            reader_after.close()
+            reader_after = None
             assert send_command(observer_a, "QUIT") == "BYE"
             assert observer_a.recv(1) == b""
             assert send_command(observer_b, "QUIT") == "BYE"
@@ -142,7 +154,7 @@ def main():
                 reader.close()
             if writer is not None:
                 writer.close()
-            for connection in (writer_a, writer_b, observer_a, observer_b, observer_c):
+            for connection in (writer_a, writer_b, observer_a, observer_b, observer_c, reader_after):
                 if connection is not None:
                     connection.close()
             server.terminate()
