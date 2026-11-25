@@ -50,6 +50,8 @@ grep -q 'DATA 1 ' "$tmp/reader"
 grep -q 'начал подготовку версии 2' "$tmp/server1"
 grep -q 'версия=1' "$tmp/server1"
 grep -q 'OK PUBLISHED 2' "$tmp/writer"
+grep -q 'проверка версии 2 завершена успешно' "$tmp/server1"
+grep -q 'версия 2 атомарно опубликована' "$tmp/server1"
 grep -q 'STATUS version=2' "$tmp/observer"
 
 # WAIT_NEW: a reader must receive the newly published version.
