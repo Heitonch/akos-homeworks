@@ -8,9 +8,26 @@ pid=
 cleanup(){ [[ -z "$pid" ]] || { kill -INT "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true; }; rm -rf "$tmp"; }
 trap cleanup EXIT
 
+wait_for_server() {
+    python3 - "$1" <<'PY'
+import socket
+import sys
+import time
+
+port = int(sys.argv[1])
+for _ in range(100):
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=0.2):
+            raise SystemExit(0)
+    except OSError:
+        time.sleep(0.05)
+raise SystemExit("server did not start")
+PY
+}
+
 # READ_OLD: reads during preparation must use the previous confirmed version.
 ./bin/idz4 server --bind 127.0.0.1 --port "$port" --strategy READ_OLD --prep-ms 300 --read-ms 0 --confirm-ms 0 >"$tmp/server1" 2>&1 & pid=$!
-sleep .2
+wait_for_server "$port"
 ./bin/idz4 writer --host 127.0.0.1 --port "$port" --id 2 --ops 1 --seed 42 >"$tmp/writer" & wp=$!
 sleep .1
 ./bin/idz4 reader --host 127.0.0.1 --port "$port" --id 1 --ops 2 >"$tmp/reader"
